@@ -15,18 +15,18 @@ import (
 )
 
 var (
-	addr      = flag.String("listen", ":9001", "Address to listen on")
-	baud      = flag.Int("baud", 115200, "Baud rate")
-	port      = flag.String("port", "/dev/ttyUSB0", "Serial port to open")
-	stateFile = flag.String("state_file", ".mysensors-state", "File to save/read state")
+	addr       = flag.String("listen", ":9001", "Address to listen on")
+	baud       = flag.Int("baud", 115200, "Baud rate")
+	port       = flag.String("port", "/dev/ttyUSB0", "Serial port to open")
+	stateFile  = flag.String("state_file", ".mysensors-state", "File to save/read state")
 	configFile = flag.String("config_file", "mysensors.cfg", "File containing config")
 )
 
 var (
-	gauge     *prometheus.GaugeVec
-	humGauge     *prometheus.GaugeVec
-	pressGauge     *prometheus.GaugeVec
-	battGauge *prometheus.GaugeVec
+	gauge      *prometheus.GaugeVec
+	humGauge   *prometheus.GaugeVec
+	pressGauge *prometheus.GaugeVec
+	battGauge  *prometheus.GaugeVec
 )
 
 var p *serial.Port
@@ -37,9 +37,9 @@ func main() {
 
 	gauge = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "mysensors_temp",
-			Help: "Mysensors temperature",
-			ConstLabels:  prometheus.Labels{"instance": "192.168.0.10:9001"},
+			Name:        "mysensors_temp",
+			Help:        "Mysensors temperature",
+			ConstLabels: prometheus.Labels{"instance": "192.168.0.10:9001"},
 		},
 		[]string{"location"},
 	)
@@ -47,9 +47,9 @@ func main() {
 
 	humGauge = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "mysensors_humidity",
-			Help: "Mysensors humidity",
-			ConstLabels:  prometheus.Labels{"instance": "192.168.0.10:9001"},
+			Name:        "mysensors_humidity",
+			Help:        "Mysensors humidity",
+			ConstLabels: prometheus.Labels{"instance": "192.168.0.10:9001"},
 		},
 		[]string{"location"},
 	)
@@ -57,9 +57,9 @@ func main() {
 
 	pressGauge = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "mysensors_pressure",
-			Help: "Mysensors pressure",
-			ConstLabels:  prometheus.Labels{"instance": "192.168.0.10:9001"},
+			Name:        "mysensors_pressure",
+			Help:        "Mysensors pressure",
+			ConstLabels: prometheus.Labels{"instance": "192.168.0.10:9001"},
 		},
 		[]string{"location"},
 	)
@@ -67,9 +67,9 @@ func main() {
 
 	battGauge = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "mysensors_battery",
-			Help: "Mysensors battery levels",
-			ConstLabels:  prometheus.Labels{"instance": "192.168.0.10:9001"},
+			Name:        "mysensors_battery",
+			Help:        "Mysensors battery levels",
+			ConstLabels: prometheus.Labels{"instance": "192.168.0.10:9001"},
 		},
 		[]string{"location"},
 	)
@@ -108,9 +108,6 @@ func main() {
 	signal.Notify(sigCh, os.Interrupt)
 	go func() {
 		for _ = range sigCh {
-//			if err = st.Save(*stateFile); err != nil {
-//				log.Printf("Error writing state file [%s]: %v", *stateFile, err)
-//			}
 			if err = net.SaveJson(*stateFile); err != nil {
 				log.Printf("Error writing state file [%s]: %v", *stateFile, err)
 			}
@@ -128,7 +125,7 @@ func main() {
 	}()
 
 	for m := range ch {
-		if err := net.HandleMessage(m); err != nil {
+		if err := net.HandleMessage(m, h.Tx); err != nil {
 			log.Printf("HandleMessage: %v\n", err)
 		}
 		switch m.Type {
@@ -141,7 +138,7 @@ func main() {
 					log.Printf("Payload error: %v\n", err)
 					continue
 				}
-				if m.NodeID == 1 {
+				if m.NodeID == 5 {
 					gauge.WithLabelValues("attic").Set(v)
 				}
 				if m.NodeID == 2 {
@@ -182,17 +179,16 @@ func main() {
 					log.Printf("Payload error: %v\n", err)
 					continue
 				}
-				if m.NodeID == 1 {
-					battGauge.WithLabelValues("attic").Set(v)
+				nodes := map[uint8]string{
+					3: "roof",
+					4: "outside",
+					5: "attic",
+					6: "office",
+					7: "pool",
+					8: "light",
 				}
-				if m.NodeID == 2 {
-					battGauge.WithLabelValues("office").Set(v)
-				}
-				if m.NodeID == 3 {
-					battGauge.WithLabelValues("roof").Set(v)
-				}
-				if m.NodeID == 4 {
-					battGauge.WithLabelValues("outside").Set(v)
+				if n, ok := nodes[m.NodeID]; ok {
+					battGauge.WithLabelValues(n).Set(v)
 				}
 				mqttCh <- m
 			}

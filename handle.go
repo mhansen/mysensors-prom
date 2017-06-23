@@ -19,12 +19,13 @@ type Handler struct {
 	c     chan *Message
 	ready bool
 	network *Network
+	Tx chan *Message
 }
 
 func (h *Handler) Start() {
 	rCh := make(chan *Message)
-	wCh := make(chan *Message)
-	go h.messageWriter(wCh)
+	h.Tx = make(chan *Message)
+	go h.messageWriter(h.Tx)
 	go h.messageReader(rCh)
 
 	for m := range rCh {
@@ -34,11 +35,15 @@ func (h *Handler) Start() {
 			r = h.processInternal(m)
 		case MsgSet:
 			r = h.processSet(m)
+		case MsgReq:
+			r = h.processReq(m)
 		case MsgPresentation:
 			r = h.processPresentation(m)
+		default:
+			log.Printf("Unknown msg type: %v\n", m)
 		}
 		if h.ready && r != nil {
-			wCh <- r
+			h.Tx <- r
 		}
 	}
 	log.Printf("Read channel closed.")
@@ -51,6 +56,11 @@ func (h *Handler) processPresentation(m *Message) *Message {
 }
 
 func (h *Handler) processSet(m *Message) *Message {
+	h.c <- m
+	return nil
+}
+
+func (h *Handler) processReq(m *Message) *Message {
 	h.c <- m
 	return nil
 }
