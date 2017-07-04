@@ -42,6 +42,7 @@ var CounterMap = map[SubTypeSetReq]string{
 // Gauges contains a mapping from MySensor variables to prometheus gauge objects.
 type Gauges struct {
 	Gauge map[SubTypeSetReq]*prometheus.GaugeVec
+	Labels []string
 }
 
 // Set sets the corresponding gauge to the given value.
@@ -58,7 +59,7 @@ func (g *Gauges) Set(t SubTypeSetReq, l []string, v float64) {
 				Help:        fmt.Sprintf("MYSENSORS %s", t),
 				ConstLabels: prometheus.Labels{"instance": "192.168.0.10:9001"},
 			},
-			[]string{"location", "sensor"},
+			g.Labels,
 		)
 		prometheus.MustRegister(ga)
 		if len(g.Gauge) == 0 {
@@ -72,6 +73,7 @@ func (g *Gauges) Set(t SubTypeSetReq, l []string, v float64) {
 // Counters contains a mapping from MySensor variables to prometheus counter objects.
 type Counters struct {
 	Counter map[SubTypeSetReq]*prometheus.CounterVec
+	Labels []string
 }
 
 // Set sets the corresponding counter to the given value.
@@ -88,7 +90,7 @@ func (c *Counters) Set(t SubTypeSetReq, l []string, v float64) {
 				Help:        fmt.Sprintf("MYSENSORS %s", t),
 				ConstLabels: prometheus.Labels{"instance": "192.168.0.10:9001"},
 			},
-			[]string{"location", "sensor"},
+			c.Labels,
 		)
 		prometheus.MustRegister(ga)
 		if len(c.Counter) == 0 {
@@ -109,6 +111,7 @@ func (n ByNode) Less(i, j int) bool { return n[i].ID < n[j].ID }
 type Network struct {
 	Nodes  map[string]*Node
 	gauges *Gauges
+	rxNodePacketCount *prometheus.CounterVec
 	Tx     chan *Message `json:"-"`
 }
 
@@ -116,8 +119,18 @@ type Network struct {
 func NewNetwork() *Network {
 	n := &Network{}
 	n.Nodes = make(map[string]*Node, 0)
-	n.gauges = &Gauges{}
+	n.gauges = &Gauges{
+		Labels:	[]string{"location", "node", "sensor"},
+	}
 	n.Tx = make(chan *Message)
+	n.rxNodePacketCount = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "mysensors_received_packets",
+			Help: "Packets received from sensor nodes",
+		},
+		[]string{"node", "location"},
+	)
+	prometheus.MustRegister(n.rxNodePacketCount)
 	return n
 }
 
@@ -236,8 +249,9 @@ func NewNode(ne *Network) *Node {
 }
 
 func (n *Node) HandleMessage(m *Message, tx chan *Message) error {
-	sID := fmt.Sprintf("%d", m.ChildSensorID)
 	n.ID = m.NodeID
+	n.network.rxNodePacketCount.WithLabelValues(strconv.Itoa(int(n.ID)), n.Location).Inc()
+	sID := fmt.Sprintf("%d", m.ChildSensorID)
 	if m.ChildSensorID == NoChild {
 		return n.handleMessage(m, tx)
 	}
@@ -257,7 +271,7 @@ func (n *Node) handleMessage(m *Message, tx chan *Message) error {
 	switch subType {
 	case I_BATTERY_LEVEL:
 		n.Battery, _ = strconv.ParseInt(string(m.Payload), 10, 32)
-		n.network.gauges.Set(V_PERCENTAGE, []string{n.Location, "0"}, float64(n.Battery)/100.0)
+		n.network.gauges.Set(V_PERCENTAGE, []string{n.Location, strconv.Itoa(int(n.ID)), "0"}, float64(n.Battery)/100.0)
 	case I_VERSION:
 		n.Version = string(m.Payload)
 	case I_SKETCH_NAME:
@@ -309,7 +323,7 @@ func (s *Sensor) HandleMessage(m *Message, tx chan *Message) error {
 		}
 		s.Vars[subType.String()].Set(string(m.Payload))
 		if s.Vars[subType.String()].Type == varFloat {
-			s.node.network.gauges.Set(subType, []string{s.node.Location, strconv.Itoa(int(s.ID))}, s.Vars[subType.String()].FloatVal)
+			s.node.network.gauges.Set(subType, []string{s.node.Location, strconv.Itoa(int(s.node.ID)), strconv.Itoa(int(s.ID))}, s.Vars[subType.String()].FloatVal)
 		}
 		log.Printf("SET: %s\n", m)
 	case MsgReq:
