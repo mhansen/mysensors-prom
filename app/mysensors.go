@@ -44,7 +44,7 @@ func main() {
 
 	net := mysensors.NewNetwork()
 	if err = net.LoadJson(*stateFile); err != nil {
-		log.Printf("Error loading state: %v", err)
+		log.Fatalf("Error loading state: %v", err)
 	}
 
 	h := mysensors.NewHandler(p, p, ch, net)
@@ -55,6 +55,7 @@ func main() {
 		}
 	}()
 
+	// Catch SIGINT and save state before exiting.
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt)
 	go func() {

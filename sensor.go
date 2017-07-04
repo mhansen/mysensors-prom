@@ -179,6 +179,10 @@ func (n *Network) StatusString() string {
 
 // Load reads State from a file.
 func (n *Network) LoadJson(f string) error {
+	if _, err := os.Stat(f); os.IsNotExist(err) {
+		log.Printf("Warning: State file (%s) does not exist, starting anew", f)
+		return nil
+	}
 	data, err := ioutil.ReadFile(f)
 	if err != nil {
 		return err
