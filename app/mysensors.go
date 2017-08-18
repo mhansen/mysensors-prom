@@ -24,32 +24,34 @@ var p *serial.Port
 
 func main() {
 	flag.Parse()
-	http.Handle("/metrics", prometheus.Handler())
 
 	var err error
 
+	// Open serial port.
 	c := &serial.Config{Name: *port, Baud: *baud}
 	p, err = serial.OpenPort(c)
 	if err != nil {
 		log.Fatalf("Error opening serial port %s: %v", *port, err)
 	}
 
+	// Start MQTT client to send sensor data.
 	mqttCh := make(chan *mysensors.Message)
 	mqtt := &mysensors.MQTTClient{}
 	if err := mqtt.Start(mqttCh); err != nil {
 		log.Fatalf("Error starting MQTT client: %v", err)
 	}
 
+	// Initialise a new network handler.
 	ch := make(chan *mysensors.Message)
-
 	net := mysensors.NewNetwork()
 	if err = net.LoadJson(*stateFile); err != nil {
 		log.Fatalf("Error loading state: %v", err)
 	}
-
 	h := mysensors.NewHandler(p, p, ch, net)
 
+	// Start the web server (for serving prometheus metrics)
 	go func() {
+		http.Handle("/metrics", prometheus.Handler())
 		if err := http.ListenAndServe(*addr, nil); err != nil {
 			panic(err)
 		}
@@ -67,15 +69,15 @@ func main() {
 		}
 	}()
 
-	go h.Start()
-
+	// Periodically print sensor status to stdout.
 	go func() {
-		for {
+		for _ = range time.Tick(30 * time.Second) {
 			net.StatusString()
-			time.Sleep(30 * time.Second)
 		}
 	}()
 
+	// Start serial handler and pass messages to the Network.
+	go h.Start()
 	for m := range ch {
 		if err := net.HandleMessage(m, h.Tx); err != nil {
 			log.Printf("HandleMessage: %v\n", err)

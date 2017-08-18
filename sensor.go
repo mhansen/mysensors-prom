@@ -29,6 +29,7 @@ var GaugeMap = map[SubTypeSetReq]string{
 	V_HUM:      "humidity",
 	V_PRESSURE: "pressure",
 	V_LEVEL:    "light_level",
+	V_LIGHT_LEVEL:    "light_percent",
 	V_VOLUME:   "volume",
 	V_PERCENTAGE: "battery_level",
 	V_VOLTAGE: "battery_voltage",
@@ -319,7 +320,7 @@ func (s *Sensor) HandleMessage(m *Message, tx chan *Message) error {
 		}
 		if _, ok := s.Vars[subType.String()]; !ok {
 			switch subType {
-			case V_TEMP, V_HUM, V_PRESSURE, V_LEVEL, V_VOLUME, V_VOLTAGE:
+			case V_TEMP, V_HUM, V_PRESSURE, V_LEVEL, V_VOLUME, V_VOLTAGE, V_LIGHT_LEVEL:
 				s.Vars[subType.String()] = &Var{Type: varFloat}
 			default:
 				s.Vars[subType.String()] = &Var{Type: varString}
