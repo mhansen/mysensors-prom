@@ -17,7 +17,7 @@ var (
 var clientID = 0
 
 type MQTTClient struct {
-	client  *mqtt.Client
+	client  mqtt.Client
 	options *mqtt.ClientOptions
 	msgChan chan *Message
 }
@@ -52,7 +52,7 @@ func (m *MQTTClient) messageListener() {
 	}
 }
 
-func (m *MQTTClient) connLostHandler(client *mqtt.Client, reason error) {
+func (m *MQTTClient) connLostHandler(client mqtt.Client, reason error) {
 	log.Printf("MQTT connection lost: %v", reason)
 	clientID++
 	m.options.SetClientID(fmt.Sprintf("%s%d", *clientPrefix, clientID))

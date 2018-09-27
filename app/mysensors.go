@@ -8,7 +8,7 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/buxtronix/mysensors"
+	"github.com/buxtronix/mysensors-prom"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tarm/serial"
 )
@@ -35,11 +35,11 @@ func main() {
 	}
 
 	// Start MQTT client to send sensor data.
-	mqttCh := make(chan *mysensors.Message)
-	mqtt := &mysensors.MQTTClient{}
-	if err := mqtt.Start(mqttCh); err != nil {
-		log.Fatalf("Error starting MQTT client: %v", err)
-	}
+	//mqttCh := make(chan *mysensors.Message)
+	//mqtt := &mysensors.MQTTClient{}
+	//if err := mqtt.Start(mqttCh); err != nil {
+//		log.Fatalf("Error starting MQTT client: %v", err)
+	//}
 
 	// Initialise a new network handler.
 	ch := make(chan *mysensors.Message)

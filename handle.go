@@ -14,12 +14,12 @@ func NewHandler(r io.Reader, w io.Writer, c chan *Message, n *Network) *Handler 
 }
 
 type Handler struct {
-	r     io.Reader
-	w     io.Writer
-	c     chan *Message
-	ready bool
+	r       io.Reader
+	w       io.Writer
+	c       chan *Message
+	ready   bool
 	network *Network
-	Tx chan *Message
+	Tx      chan *Message
 }
 
 func (h *Handler) Start() {
@@ -35,6 +35,7 @@ func (h *Handler) Start() {
 			r = h.processInternal(m)
 		case MsgSet:
 			r = h.processSet(m)
+			h.ready = true
 		case MsgReq:
 			r = h.processReq(m)
 		case MsgPresentation:
