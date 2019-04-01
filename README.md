@@ -46,6 +46,6 @@ Run the binary (see --help for other flags):
 
 `./mysensors`
 
-Metrics are then visible on http://localhost:9001/ as they
+Metrics are then visible on http://localhost:9001/metrics as they
 are received.
 
