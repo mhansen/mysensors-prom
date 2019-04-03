@@ -14,10 +14,10 @@ import (
 )
 
 var (
-	addr       = flag.String("listen", ":9001", "Address to listen on")
-	baud       = flag.Int("baud", 115200, "Baud rate")
-	port       = flag.String("port", "/dev/ttyUSB0", "Serial port to open")
-	stateFile  = flag.String("state_file", ".mysensors-state", "File to save/read state")
+	addr      = flag.String("listen", ":9001", "Address to listen on")
+	baud      = flag.Int("baud", 115200, "Baud rate")
+	port      = flag.String("port", "/dev/ttyUSB0", "Serial port to open")
+	stateFile = flag.String("state_file", ".mysensors-state", "File to save/read state")
 )
 
 var p *serial.Port
@@ -38,7 +38,7 @@ func main() {
 	//mqttCh := make(chan *mysensors.Message)
 	//mqtt := &mysensors.MQTTClient{}
 	//if err := mqtt.Start(mqttCh); err != nil {
-//		log.Fatalf("Error starting MQTT client: %v", err)
+	//		log.Fatalf("Error starting MQTT client: %v", err)
 	//}
 
 	// Initialise a new network handler.
