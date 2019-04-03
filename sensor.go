@@ -102,12 +102,6 @@ func (c *Counters) Set(t SubTypeSetReq, l []string, v float64) {
 	ga.WithLabelValues(l...).Add(v)
 }
 
-type ByNode []*Node
-
-func (n ByNode) Len() int           { return len(n) }
-func (n ByNode) Swap(i, j int)      { n[i], n[j] = n[j], n[i] }
-func (n ByNode) Less(i, j int) bool { return n[i].ID < n[j].ID }
-
 // Network is a container for all sensor nodes.
 type Network struct {
 	Nodes             map[string]*Node
@@ -162,13 +156,23 @@ func (n *Network) StatusString() string {
 	for _, node := range n.Nodes {
 		nodes = append(nodes, node)
 	}
-	sort.Sort(ByNode(nodes))
+	sort.Slice(nodes, func(i, j int) bool { return nodes[i].ID < nodes[j].ID })
 	for _, node := range nodes {
 		fmt.Printf("Node %d [%s %s]    Location: %s    Battery: %d%%\n", node.ID, node.SketchName, node.SketchVersion, node.Location, node.Battery)
-		for _, s := range node.Sensors {
+		sensors := []*Sensor{}
+		for _, sensor := range node.Sensors {
+			sensors = append(sensors, sensor)
+		}
+		sort.Slice(sensors, func(i, j int) bool { return sensors[i].ID < sensors[j].ID })
+		for _, s := range sensors {
 			fmt.Printf(" Sensor %d [%s]: ", s.ID, s.Presentation)
-			for t, v := range s.Vars {
-				fmt.Printf(" %s: %s   ", t, v.String())
+			vars := []*Var{}
+			for _, v := range s.Vars {
+				vars = append(vars, v)
+			}
+			sort.Slice(vars, func(i, j int) bool { return vars[i].Name < vars[j].Name })
+			for _, v := range vars {
+				fmt.Printf(" %s: %s   ", v.SubType.String(), v.String())
 			}
 			fmt.Println()
 		}
@@ -326,6 +330,7 @@ func (s *Sensor) HandleMessage(m *Message, tx chan *Message) error {
 				s.Vars[subType.String()] = &Var{Type: varString}
 			}
 		}
+		s.Vars[subType.String()].SubType = subType
 		s.Vars[subType.String()].Set(string(m.Payload))
 		if s.Vars[subType.String()].Type == varFloat {
 			s.node.network.gauges.Set(subType, []string{s.node.Location, strconv.Itoa(int(s.node.ID)), strconv.Itoa(int(s.ID))}, s.Vars[subType.String()].FloatVal)
@@ -354,6 +359,7 @@ const (
 type Var struct {
 	Name      string
 	Type      string
+	SubType   SubTypeSetReq
 	FloatVal  float64
 	StringVal string
 }
