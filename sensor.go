@@ -10,6 +10,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -158,7 +159,14 @@ func (n *Network) StatusString() string {
 	}
 	sort.Slice(nodes, func(i, j int) bool { return nodes[i].ID < nodes[j].ID })
 	for _, node := range nodes {
-		fmt.Printf("Node %d [%s %s]    Location: %s    Battery: %d%%\n", node.ID, node.SketchName, node.SketchVersion, node.Location, node.Battery)
+		fmt.Printf(
+			"Node %d [%s %s]    Location: %s    Battery: %d%% @ %s\n",
+			node.ID,
+			node.SketchName,
+			node.SketchVersion,
+			node.Location,
+			node.Battery,
+			node.BatteryModifiedTime.Format(time.RFC3339))
 		sensors := []*Sensor{}
 		for _, sensor := range node.Sensors {
 			sensors = append(sensors, sensor)
@@ -172,7 +180,7 @@ func (n *Network) StatusString() string {
 			}
 			sort.Slice(vars, func(i, j int) bool { return vars[i].Name < vars[j].Name })
 			for _, v := range vars {
-				fmt.Printf(" %s: %s   ", v.SubType.String(), v.String())
+				fmt.Printf(" %s: %s @ %s   ", v.SubType.String(), v.String(), v.ValModifiedTime.Format(time.RFC3339))
 			}
 			fmt.Println()
 		}
@@ -237,6 +245,8 @@ type Node struct {
 	ID uint8
 	// Battery is the battery level percent.
 	Battery int64
+	// BatteryModifiedTime is the time we received the last battery percent
+	BatteryModifiedTime time.Time
 	// Location per the configuration.
 	Location string
 	// Version as reported.
@@ -280,6 +290,7 @@ func (n *Node) handleMessage(m *Message, tx chan *Message) error {
 	switch subType {
 	case I_BATTERY_LEVEL:
 		n.Battery, _ = strconv.ParseInt(string(m.Payload), 10, 32)
+		n.BatteryModifiedTime = time.Now()
 		n.network.gauges.Set(V_PERCENTAGE, []string{n.Location, strconv.Itoa(int(n.ID)), "0"}, float64(n.Battery)/100.0)
 	case I_VERSION:
 		n.Version = string(m.Payload)
@@ -357,11 +368,12 @@ const (
 )
 
 type Var struct {
-	Name      string
-	Type      string
-	SubType   SubTypeSetReq
-	FloatVal  float64
-	StringVal string
+	Name            string
+	Type            string
+	SubType         SubTypeSetReq
+	FloatVal        float64
+	StringVal       string
+	ValModifiedTime time.Time
 }
 
 func (v *Var) Set(val string) error {
@@ -375,6 +387,7 @@ func (v *Var) Set(val string) error {
 		}
 		v.FloatVal = fv
 	}
+	v.ValModifiedTime = time.Now()
 	return nil
 }
 
