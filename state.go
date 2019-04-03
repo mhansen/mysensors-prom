@@ -61,4 +61,3 @@ func (c *Config) Load(f string) error {
 func (c *Config) Save(f string) error {
 	return SaveJson(f, c)
 }
-

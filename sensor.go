@@ -25,14 +25,14 @@ const (
 
 // GaugeMap maps MySensor variables to prometheus variable names.
 var GaugeMap = map[SubTypeSetReq]string{
-	V_TEMP:     "temperature",
-	V_HUM:      "humidity",
-	V_PRESSURE: "pressure",
-	V_LEVEL:    "light_level",
-	V_LIGHT_LEVEL:    "light_percent",
-	V_VOLUME:   "volume",
-	V_PERCENTAGE: "battery_level",
-	V_VOLTAGE: "battery_voltage",
+	V_TEMP:        "temperature",
+	V_HUM:         "humidity",
+	V_PRESSURE:    "pressure",
+	V_LEVEL:       "light_level",
+	V_LIGHT_LEVEL: "light_percent",
+	V_VOLUME:      "volume",
+	V_PERCENTAGE:  "battery_level",
+	V_VOLTAGE:     "battery_voltage",
 }
 
 // CounterMap maps MySensor variables to prometheus variable names.
@@ -42,7 +42,7 @@ var CounterMap = map[SubTypeSetReq]string{
 
 // Gauges contains a mapping from MySensor variables to prometheus gauge objects.
 type Gauges struct {
-	Gauge map[SubTypeSetReq]*prometheus.GaugeVec
+	Gauge  map[SubTypeSetReq]*prometheus.GaugeVec
 	Labels []string
 }
 
@@ -74,7 +74,7 @@ func (g *Gauges) Set(t SubTypeSetReq, l []string, v float64) {
 // Counters contains a mapping from MySensor variables to prometheus counter objects.
 type Counters struct {
 	Counter map[SubTypeSetReq]*prometheus.CounterVec
-	Labels []string
+	Labels  []string
 }
 
 // Set sets the corresponding counter to the given value.
@@ -104,16 +104,16 @@ func (c *Counters) Set(t SubTypeSetReq, l []string, v float64) {
 
 type ByNode []*Node
 
-func (n ByNode) Len() int { return len(n) }
-func (n ByNode) Swap(i, j int) { n[i], n[j] = n[j], n[i] }
+func (n ByNode) Len() int           { return len(n) }
+func (n ByNode) Swap(i, j int)      { n[i], n[j] = n[j], n[i] }
 func (n ByNode) Less(i, j int) bool { return n[i].ID < n[j].ID }
 
 // Network is a container for all sensor nodes.
 type Network struct {
-	Nodes  map[string]*Node
-	gauges *Gauges
+	Nodes             map[string]*Node
+	gauges            *Gauges
 	rxNodePacketCount *prometheus.CounterVec
-	Tx     chan *Message `json:"-"`
+	Tx                chan *Message `json:"-"`
 }
 
 // NewNetwork initialises a new Network.
@@ -121,7 +121,7 @@ func NewNetwork() *Network {
 	n := &Network{}
 	n.Nodes = make(map[string]*Node, 0)
 	n.gauges = &Gauges{
-		Labels:	[]string{"location", "node", "sensor"},
+		Labels: []string{"location", "node", "sensor"},
 	}
 	n.Tx = make(chan *Message)
 	n.rxNodePacketCount = prometheus.NewCounterVec(
@@ -296,7 +296,7 @@ type Sensor struct {
 	// Presentation is the sensor subtype presented.
 	Presentation SubTypePresentation
 	// Vars are the variables presented by this child sensor.
-	Vars      map[string]*Var
+	Vars map[string]*Var
 	// Node is the parent node.
 	node *Node
 }
