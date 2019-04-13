@@ -334,15 +334,7 @@ func (m *Message) Copy() *Message {
 
 // Marshal marshals the message into a byte slice.
 func (m *Message) Marshal() []byte {
-	b := []byte{}
-	b = append(b, []byte(fmt.Sprintf("%d;", m.NodeID))...)
-	b = append(b, []byte(fmt.Sprintf("%d;", m.ChildSensorID))...)
-	b = append(b, []byte(fmt.Sprintf("%d;", m.Type))...)
-	b = append(b, []byte(fmt.Sprintf("%d;", m.Ack))...)
-	b = append(b, []byte(fmt.Sprintf("%d;", m.SubType))...)
-	b = append(b, m.Payload...)
-	b = append(b, []byte("\n")...)
-	return b
+	return []byte(fmt.Sprintf("%d;%d;%d;%d;%d;%s\n", m.NodeID, m.ChildSensorID, m.Type, m.Ack, m.SubType, m.Payload))
 }
 
 // Unmarshal reads the given wire bytes into the Message.
