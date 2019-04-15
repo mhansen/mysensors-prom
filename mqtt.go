@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	broker       = flag.String("broker", "tcp://192.168.0.100:1883", "MQTT broker address")
+	broker       = flag.String("broker", "", "MQTT broker address, eg tcp://192.168.0.1:1883")
 	topicPrefix  = flag.String("topic_prefix", "mysensors", "Prefix for MQTT topic")
 	clientPrefix = flag.String("client_prefix", "mysensors-", "Prefix for MQTT client name")
 )
@@ -23,6 +23,9 @@ type MQTTClient struct {
 }
 
 func (m *MQTTClient) Start(ch chan *Message) error {
+	if *broker == "" {
+		return nil
+	}
 	m.options = mqtt.NewClientOptions().AddBroker(*broker)
 	m.options.SetClientID(*clientPrefix)
 	m.options.SetConnectionLostHandler(m.connLostHandler)
@@ -45,7 +48,7 @@ func (m *MQTTClient) startClient() error {
 
 func (m *MQTTClient) messageListener() {
 	for msg := range m.msgChan {
-		topic := fmt.Sprintf("%s/%d/%d/%s", *topicPrefix, msg.NodeID, msg.ChildSensorID, msg.SubType)
+		topic := fmt.Sprintf("%s/%d/%d/%d/%d/%d", *topicPrefix, msg.NodeID, msg.ChildSensorID, msg.Type, msg.Ack, msg.SubType)
 		if token := m.client.Publish(topic, 0, true, msg.Payload); token.Wait() && token.Error() != nil {
 			log.Printf("MQTT publish error: %v\n", token.Error())
 		}

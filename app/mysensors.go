@@ -35,11 +35,11 @@ func main() {
 	}
 
 	// Start MQTT client to send sensor data.
-	//mqttCh := make(chan *mysensors.Message)
-	//mqtt := &mysensors.MQTTClient{}
-	//if err := mqtt.Start(mqttCh); err != nil {
-	//		log.Fatalf("Error starting MQTT client: %v", err)
-	//}
+	mqttCh := make(chan *mysensors.Message)
+	mqtt := &mysensors.MQTTClient{}
+	if err := mqtt.Start(mqttCh); err != nil {
+			log.Fatalf("Error starting MQTT client: %v", err)
+	}
 
 	// Initialise a new network handler.
 	ch := make(chan *mysensors.Message)
@@ -79,6 +79,7 @@ func main() {
 	// Start serial handler and pass messages to the Network.
 	go h.Start()
 	for m := range ch {
+		mqttCh <- m
 		if err := net.HandleMessage(m, h.Tx); err != nil {
 			log.Printf("HandleMessage: %v\n", err)
 		}
