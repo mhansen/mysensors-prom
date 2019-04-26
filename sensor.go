@@ -132,7 +132,8 @@ func NewNetwork() *Network {
 // HandleMessage handles a MySensors message from the gateway.
 func (n *Network) HandleMessage(m *Message, tx chan *Message) error {
 	if m.NodeID == GatewayID {
-		return n.handleMessage(m, tx)
+		log.Printf("GW MSG: %s\n", m)
+		// Fallthrough: Gateways can expose sensors directly
 	}
 	nID := fmt.Sprintf("%d", m.NodeID)
 	nd, ok := n.Nodes[nID]
@@ -141,12 +142,6 @@ func (n *Network) HandleMessage(m *Message, tx chan *Message) error {
 		n.Nodes[nID] = nd
 	}
 	return nd.HandleMessage(m, tx)
-}
-
-// handleMessage handles messages for/from the gateway.
-func (n *Network) handleMessage(m *Message, tx chan *Message) error {
-	log.Printf("GW MSG: %s\n", m)
-	return nil
 }
 
 // StatusString prints a formatted representation of the network.
