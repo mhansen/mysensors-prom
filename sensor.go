@@ -10,6 +10,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -108,6 +109,7 @@ type Network struct {
 	gauges            *Gauges
 	rxNodePacketCount *prometheus.CounterVec
 	Tx                chan *Message `json:"-"`
+	mux               sync.Mutex
 }
 
 // NewNetwork initialises a new Network.
@@ -131,6 +133,8 @@ func NewNetwork() *Network {
 
 // HandleMessage handles a MySensors message from the gateway.
 func (n *Network) HandleMessage(m *Message, tx chan *Message) error {
+	n.mux.Lock()
+	defer n.mux.Unlock()
 	if m.NodeID == GatewayID {
 		log.Printf("GW MSG: %s\n", m)
 		// Fallthrough: Gateways can expose sensors directly
@@ -146,6 +150,8 @@ func (n *Network) HandleMessage(m *Message, tx chan *Message) error {
 
 // StatusString returns a formatted representation of the network.
 func (n *Network) StatusString() string {
+	n.mux.Lock()
+	defer n.mux.Unlock()
 	var b bytes.Buffer
 	fmt.Fprint(&b, ">>> status\n\n")
 	nodes := []*Node{}
@@ -180,6 +186,8 @@ func (n *Network) StatusString() string {
 
 // LoadJson reads a Network from a JSON file.
 func (n *Network) LoadJson(f string) error {
+	n.mux.Lock()
+	defer n.mux.Unlock()
 	if _, err := os.Stat(f); os.IsNotExist(err) {
 		log.Printf("Warning: State file (%s) does not exist, starting anew", f)
 		return nil
@@ -204,6 +212,8 @@ func (n *Network) LoadJson(f string) error {
 
 // SaveJson saves the network to a file in Json format.
 func (n *Network) SaveJson(f string) error {
+	n.mux.Lock()
+	defer n.mux.Unlock()
 	data, err := json.Marshal(n)
 	if err != nil {
 		return err
@@ -218,6 +228,8 @@ func (n *Network) SaveJson(f string) error {
 
 // NextNodeID allocates and returns a node ID.
 func (n *Network) NextNodeID() uint8 {
+	n.mux.Lock()
+	defer n.mux.Unlock()
 	nextID := uint8(FirstNodeID)
 	for _, node := range n.Nodes {
 		if node.ID >= nextID {
