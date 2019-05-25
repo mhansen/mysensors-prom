@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -105,11 +106,12 @@ func (c *Counters) Set(t SubTypeSetReq, l []string, v float64) {
 
 // Network is a container for all sensor nodes.
 type Network struct {
-	Nodes             map[string]*Node
-	gauges            *Gauges
-	rxNodePacketCount *prometheus.CounterVec
-	Tx                chan *Message `json:"-"`
-	mux               sync.Mutex
+	Nodes                 map[string]*Node
+	gauges                *Gauges
+	rxNodePacketCount     *prometheus.CounterVec
+	Tx                    chan *Message `json:"-"`
+	mux                   sync.Mutex
+	rxNodePacketTimestamp *prometheus.GaugeVec
 }
 
 // NewNetwork initialises a new Network.
@@ -128,6 +130,14 @@ func NewNetwork() *Network {
 		[]string{"node", "location"},
 	)
 	prometheus.MustRegister(n.rxNodePacketCount)
+	n.rxNodePacketTimestamp = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "mysensors_last_received_packet_timestamp_seconds",
+			Help: "Unix seconds since latest packet received.",
+		},
+		[]string{"node", "location"},
+	)
+	prometheus.MustRegister(n.rxNodePacketTimestamp)
 	return n
 }
 
@@ -267,7 +277,9 @@ func NewNode(ne *Network) *Node {
 
 func (n *Node) HandleMessage(m *Message, tx chan *Message) error {
 	n.ID = m.NodeID
-	n.network.rxNodePacketCount.WithLabelValues(strconv.Itoa(int(n.ID)), n.Location).Inc()
+	labels := []string{strconv.Itoa(int(n.ID)), n.Location}
+	n.network.rxNodePacketCount.WithLabelValues(labels...).Inc()
+	n.network.rxNodePacketTimestamp.WithLabelValues(labels...).Set(float64(time.Now().Unix()))
 	sID := fmt.Sprintf("%d", m.ChildSensorID)
 	if m.ChildSensorID == NoChild {
 		return n.handleMessage(m, tx)
