@@ -161,14 +161,21 @@ func (n *Network) StatusString() string {
 	}
 	sort.Slice(nodes, func(i, j int) bool { return nodes[i].ID < nodes[j].ID })
 	for _, node := range nodes {
-		fmt.Fprintf(&b, "Node %d [%s %s]    Location: %s    Battery: %d%%\n", node.ID, node.SketchName, node.SketchVersion, node.Location, node.Battery)
+		fmt.Fprintf(&b, "Node %d [%s %s]", node.ID, node.SketchName, node.SketchVersion)
+		if node.Location != "" {
+			fmt.Fprintf(&b, "    Location: %s", node.Location)
+		}
+		if node.Battery != nil {
+			fmt.Fprintf(&b, "    Battery: %d%%", *node.Battery)
+		}
+		fmt.Fprintln(&b)
 		sensors := []*Sensor{}
 		for _, sensor := range node.Sensors {
 			sensors = append(sensors, sensor)
 		}
 		sort.Slice(sensors, func(i, j int) bool { return sensors[i].ID < sensors[j].ID })
 		for _, s := range sensors {
-			fmt.Fprintf(&b, " Sensor %d [%s]: ", s.ID, s.Presentation)
+			fmt.Fprintf(&b, " Sensor %d [%s]: ", s.ID, s.Presentation.StatusString())
 			vars := []*Var{}
 			for _, v := range s.Vars {
 				vars = append(vars, v)
@@ -244,8 +251,8 @@ func (n *Network) NextNodeID() uint8 {
 type Node struct {
 	// ID is the node ID.
 	ID uint8
-	// Battery is the battery level percent.
-	Battery int64
+	// Battery is the battery level percent, or nil if unknown.
+	Battery *int64
 	// Location per the configuration.
 	Location string
 	// Version as reported.
@@ -288,8 +295,10 @@ func (n *Node) handleMessage(m *Message, tx chan *Message) error {
 	subType := m.SubType.(SubTypeInternal)
 	switch subType {
 	case I_BATTERY_LEVEL:
-		n.Battery, _ = strconv.ParseInt(string(m.Payload), 10, 32)
-		n.network.gauges.Set(V_PERCENTAGE, []string{n.Location, strconv.Itoa(int(n.ID)), "0"}, float64(n.Battery)/100.0)
+		if battery, err := strconv.ParseInt(string(m.Payload), 10, 32); err != nil {
+			n.Battery = &battery
+			n.network.gauges.Set(V_PERCENTAGE, []string{n.Location, strconv.Itoa(int(n.ID)), "0"}, float64(battery)/100.0)
+		}
 	case I_VERSION:
 		n.Version = string(m.Payload)
 	case I_SKETCH_NAME:
@@ -306,8 +315,9 @@ func (n *Node) handleMessage(m *Message, tx chan *Message) error {
 type Sensor struct {
 	// ID is the sensor ID.
 	ID uint8
-	// Presentation is the sensor subtype presented.
-	Presentation SubTypePresentation
+	// Presentation is the sensor subtype presented, or nil pointer if unknown.
+	// Unknown can happen if the sensor has not presented what sensors it supports yet.
+	Presentation *SubTypePresentation
 	// Vars are the variables presented by this child sensor.
 	Vars map[string]*Var
 	// Node is the parent node.
@@ -324,7 +334,8 @@ func (s *Sensor) HandleMessage(m *Message, tx chan *Message) error {
 	s.ID = m.ChildSensorID
 	switch m.Type {
 	case MsgPresentation:
-		s.Presentation = m.SubType.(SubTypePresentation)
+		p := m.SubType.(SubTypePresentation)
+		s.Presentation = &p
 		log.Printf("PRES: %s\n", m)
 	case MsgSet:
 		subType := m.SubType.(SubTypeSetReq)

@@ -134,9 +134,19 @@ var subTypePresentation = [...]string{
 	"S_MOISTURE",
 }
 
-func (t SubTypePresentation) String() string { return subTypePresentation[t] }
+// String formats an optionally-present SubTypePresentation for status messages.
+func (t SubTypePresentation) String() string {
+	return subTypePresentation[t]
+}
 
 func (t SubTypePresentation) Value() uint8 { return uint8(t) }
+
+func (t *SubTypePresentation) StatusString() string {
+	if t == nil {
+		return "UNKNOWN"
+	}
+	return t.String()
+}
 
 // SubTypeSetReq are SubTypes for set and request messages.
 type SubTypeSetReq uint8
