@@ -44,8 +44,9 @@ var CounterMap = map[SubTypeSetReq]string{
 
 // Gauges contains a mapping from MySensor variables to prometheus gauge objects.
 type Gauges struct {
-	Gauge  map[SubTypeSetReq]*prometheus.GaugeVec
-	Labels []string
+	Gauge              map[SubTypeSetReq]*prometheus.GaugeVec
+	receiveTimeSeconds *prometheus.GaugeVec
+	Labels             []string
 }
 
 // Set sets the corresponding gauge to the given value.
@@ -71,6 +72,7 @@ func (g *Gauges) Set(t SubTypeSetReq, l []string, v float64) {
 		g.Gauge[t] = ga
 	}
 	ga.WithLabelValues(l...).Set(v)
+	g.receiveTimeSeconds.WithLabelValues(l...).SetToCurrentTime()
 }
 
 // Counters contains a mapping from MySensor variables to prometheus counter objects.
@@ -117,8 +119,16 @@ type Network struct {
 func NewNetwork() *Network {
 	n := &Network{}
 	n.Nodes = make(map[string]*Node, 0)
+	labels := []string{"location", "node", "sensor"}
 	n.gauges = &Gauges{
-		Labels: []string{"location", "node", "sensor"},
+		Labels: labels,
+		receiveTimeSeconds: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "mysensors_receive_time_seconds",
+				Help: "Unix timestamp of packet received from this sensor",
+			},
+			labels,
+		),
 	}
 	n.Tx = make(chan *Message)
 	n.rxNodePacketCount = prometheus.NewCounterVec(
@@ -129,6 +139,7 @@ func NewNetwork() *Network {
 		[]string{"node", "location"},
 	)
 	prometheus.MustRegister(n.rxNodePacketCount)
+	prometheus.MustRegister(n.gauges.receiveTimeSeconds)
 	return n
 }
 
