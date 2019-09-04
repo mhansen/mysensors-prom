@@ -25,6 +25,7 @@ const (
 
 // GaugeMap maps MySensor variables to prometheus variable names.
 var GaugeMap = map[SubTypeSetReq]string{
+	V_DISTANCE:    "distance",
 	V_TEMP:        "temperature",
 	V_HUM:         "humidity",
 	V_PRESSURE:    "pressure",
@@ -320,7 +321,7 @@ func (s *Sensor) HandleMessage(m *Message, tx chan *Message) error {
 		}
 		if _, ok := s.Vars[subType.String()]; !ok {
 			switch subType {
-			case V_TEMP, V_HUM, V_PRESSURE, V_LEVEL, V_VOLUME, V_VOLTAGE, V_LIGHT_LEVEL:
+			case V_DISTANCE, V_TEMP, V_HUM, V_PRESSURE, V_LEVEL, V_VOLUME, V_VOLTAGE, V_LIGHT_LEVEL:
 				s.Vars[subType.String()] = &Var{Type: varFloat}
 			default:
 				s.Vars[subType.String()] = &Var{Type: varString}
