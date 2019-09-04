@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/buxtronix/mysensors-prom"
@@ -57,9 +58,9 @@ func main() {
 		}
 	}()
 
-	// Catch SIGINT and save state before exiting.
+	// Catch SIGINT/SIGTERM and save state before exiting.
 	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, os.Interrupt)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		for _ = range sigCh {
 			if err = net.SaveJson(*stateFile); err != nil {

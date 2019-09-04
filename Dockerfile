@@ -13,5 +13,5 @@ FROM scratch
 
 COPY --from=builder /root/mysensors /root/
 EXPOSE 9001
-ENTRYPOINT ["/root/mysensors"]
+ENTRYPOINT ["/root/mysensors", "--broker=tcp://127.0.0.1:1883"]
 

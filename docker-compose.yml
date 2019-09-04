@@ -2,13 +2,12 @@ version: '2.4'
 services:
   mysensors:
     build: .
-    image: docker.cactii.net/mysensorsmqtt
+    image: mysensorsmqtt
     container_name: mysensorsmqtt
     network_mode: "host"
-#    ports:
-#            - 9001:9001
     devices:
       - /dev/ttyUSB0:/dev/ttyUSB0
+    command: /root/mysensors --broker=tcp://127.0.0.1:1883 -port /dev/ttyUSB0
     volumes:
       - type: bind
         source: ./mysensors-state
