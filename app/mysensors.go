@@ -2,6 +2,8 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"os"
@@ -19,6 +21,12 @@ var (
 	baud      = flag.Int("baud", 115200, "Baud rate")
 	port      = flag.String("port", "/dev/ttyUSB0", "Serial port to open")
 	stateFile = flag.String("state_file", ".mysensors-state", "File to save/read state")
+	index     = template.Must(template.New("index").Parse(
+		`<!doctype html>
+		 <title>MySensors Prometheus Exporter</title>
+		 <h1>MySensors Prometheus Exporter</h1>
+		 <a href="/metrics">Metrics</a>
+		 <pre>{{.}}</pre>`))
 )
 
 var p *serial.Port
@@ -52,6 +60,10 @@ func main() {
 
 	// Start the web server (for serving prometheus metrics)
 	go func() {
+		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			index.Execute(w, net.StatusString())
+		})
 		http.Handle("/metrics", prometheus.Handler())
 		if err := http.ListenAndServe(*addr, nil); err != nil {
 			panic(err)
@@ -62,7 +74,7 @@ func main() {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
-		for _ = range sigCh {
+		for range sigCh {
 			if err = net.SaveJson(*stateFile); err != nil {
 				log.Printf("Error writing state file [%s]: %v", *stateFile, err)
 			}
@@ -72,8 +84,8 @@ func main() {
 
 	// Periodically print sensor status to stdout.
 	go func() {
-		for _ = range time.Tick(30 * time.Second) {
-			net.StatusString()
+		for range time.Tick(30 * time.Second) {
+			fmt.Println(net.StatusString())
 		}
 	}()
 

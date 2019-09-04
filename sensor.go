@@ -132,7 +132,8 @@ func NewNetwork() *Network {
 // HandleMessage handles a MySensors message from the gateway.
 func (n *Network) HandleMessage(m *Message, tx chan *Message) error {
 	if m.NodeID == GatewayID {
-		return n.handleMessage(m, tx)
+		log.Printf("GW MSG: %s\n", m)
+		// Fallthrough: Gateways can expose sensors directly
 	}
 	nID := fmt.Sprintf("%d", m.NodeID)
 	nd, ok := n.Nodes[nID]
@@ -143,43 +144,38 @@ func (n *Network) HandleMessage(m *Message, tx chan *Message) error {
 	return nd.HandleMessage(m, tx)
 }
 
-// handleMessage handles messages for/from the gateway.
-func (n *Network) handleMessage(m *Message, tx chan *Message) error {
-	log.Printf("GW MSG: %s\n", m)
-	return nil
-}
-
-// StatusString prints a formatted representation of the network.
+// StatusString returns a formatted representation of the network.
 func (n *Network) StatusString() string {
-	fmt.Printf(">>> status\n\n")
+	var b bytes.Buffer
+	fmt.Fprint(&b, ">>> status\n\n")
 	nodes := []*Node{}
 	for _, node := range n.Nodes {
 		nodes = append(nodes, node)
 	}
 	sort.Slice(nodes, func(i, j int) bool { return nodes[i].ID < nodes[j].ID })
 	for _, node := range nodes {
-		fmt.Printf("Node %d [%s %s]    Location: %s    Battery: %d%%\n", node.ID, node.SketchName, node.SketchVersion, node.Location, node.Battery)
+		fmt.Fprintf(&b, "Node %d [%s %s]    Location: %s    Battery: %d%%\n", node.ID, node.SketchName, node.SketchVersion, node.Location, node.Battery)
 		sensors := []*Sensor{}
 		for _, sensor := range node.Sensors {
 			sensors = append(sensors, sensor)
 		}
 		sort.Slice(sensors, func(i, j int) bool { return sensors[i].ID < sensors[j].ID })
 		for _, s := range sensors {
-			fmt.Printf(" Sensor %d [%s]: ", s.ID, s.Presentation)
+			fmt.Fprintf(&b, " Sensor %d [%s]: ", s.ID, s.Presentation)
 			vars := []*Var{}
 			for _, v := range s.Vars {
 				vars = append(vars, v)
 			}
 			sort.Slice(vars, func(i, j int) bool { return vars[i].Name < vars[j].Name })
 			for _, v := range vars {
-				fmt.Printf(" %s: %s   ", v.SubType.String(), v.String())
+				fmt.Fprintf(&b, " %s: %s   ", v.SubType.String(), v.String())
 			}
-			fmt.Println()
+			fmt.Fprintln(&b)
 		}
-		fmt.Println()
+		fmt.Fprintln(&b)
 	}
-	fmt.Printf("<<< status\n")
-	return ""
+	fmt.Fprintln(&b, "<<< status")
+	return b.String()
 }
 
 // LoadJson reads a Network from a JSON file.

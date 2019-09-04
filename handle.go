@@ -98,7 +98,7 @@ func (h *Handler) messageReader(c chan *Message) {
 	for {
 		d, err := r.ReadBytes('\x0a')
 		if err != nil {
-			log.Printf("Read error: %v\n", err)
+			log.Fatalf("Read error: %v\n", err)
 			break
 		}
 		m := &Message{}
